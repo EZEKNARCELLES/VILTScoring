@@ -508,6 +508,7 @@
 
         function saveNote(catIndex, critIndex, note) {
             notes[`${catIndex}-${critIndex}`] = note;
+            console.log(`Saved note for ${catIndex}-${critIndex}:`, note); // Debug log
         }
 
         function calculateCategoryScore(catIndex) {
