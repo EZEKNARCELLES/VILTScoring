@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Training Delivery Evaluation Scoresheet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .score-btn { transition: all 0.2s; }
+        .score-btn:hover { transform: scale(1.05); }
+        .score-btn.selected { transform: scale(1.08); box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="max-w-7xl mx-auto p-6" id="app">
+        <!-- Header Section -->
+        <div class="bg-white rounded-lg shadow-lg p-8 mb-6">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Virtual Training Delivery Evaluation Scoresheet</h1>
+            <p class="text-gray-600 mb-6">Interactive scoring tool with automatic calculation</p>
+
+            <!-- Info Fields -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Trainer Name</label>
+                    <input type="text" id="trainerName" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter trainer name">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Session Date</label>
+                    <input type="date" id="sessionDate" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Evaluator Name</label>
+                    <input type="text" id="evaluatorName" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter evaluator name">
+                </div>
+            </div>
+
+            <!-- Score Display -->
+            <div class="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-300 rounded-lg p-6 mb-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800 mb-1">Overall Score</h2>
+                        <p class="text-sm text-gray-600">Auto-calculated based on weighted criteria</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-5xl font-bold text-blue-600 mb-2">
+                            <span id="totalScore">0.0</span><span class="text-3xl text-gray-500">/100</span>
+                        </div>
+                        <div id="scoreLevel" class="inline-block px-4 py-2 rounded-lg font-semibold bg-gray-100 text-gray-700">
+                            Not Yet Scored
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-wrap gap-3 mb-6">
+                <button onclick="exportToExcel()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">
+                    📥 Export Completed Scoresheet
+                </button>
+                <button onclick="resetAll()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition">
+                    🔄 Reset All
+                </button>
+                <button onclick="toggleAI()" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition">
+                    <span id="aiToggleText">Show AI Detection Methods</span>
+                </button>
+            </div>
+
+            <!-- Instructions -->
+            <div class="bg-blue-50 border-l-4 border-blue-600 p-4">
+                <div class="flex items-start gap-2">
+                    <span class="text-blue-600 mt-1">ℹ️</span>
+                    <div class="text-sm text-gray-700">
+                        <p class="font-semibold mb-1">How to Use:</p>
+                        <p>Click a score (1-5) for each criterion. Your total score will automatically calculate. Add notes for specific feedback. Export when complete.</p>
+                        <p class="mt-2"><strong>Scale:</strong> 1 = Needs Significant Improvement | 2 = Below Expectations | 3 = Meets Expectations | 4 = Exceeds Expectations | 5 = Exceptional</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Categories will be inserted here -->
+        <div id="categoriesContainer"></div>
+
+        <!-- Final Score Summary (Sticky) -->
+        <div class="bg-white rounded-lg shadow-lg p-6 sticky bottom-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-800">Final Score Summary</h3>
+                    <p class="text-sm text-gray-600">Total weighted score across all categories</p>
+                </div>
+                <div class="text-right">
+                    <div class="text-4xl font-bold text-blue-600 mb-1">
+                        <span id="totalScoreBottom">0.0</span><span class="text-2xl text-gray-500">/100</span>
+                    </div>
+                    <div id="scoreLevelBottom" class="inline-block px-4 py-2 rounded-lg font-semibold bg-gray-100 text-gray-700">
+                        Not Yet Scored
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const rubricData = {
+            categories: [
+                {
+                    name: "Technical Proficiency & Platform Management",
+                    weight: 15,
+                    criteria: [
+                        {
+                            item: "Platform Navigation & Control",
+                            weight: 4,
+                            scale: [
+                                "Unable to manage platform features; frequent technical errors disrupt session",
+                                "Struggles with platform features; occasional disruptions affect flow",
+                                "Manages basic platform features adequately; minor technical hiccups",
+                                "Confident platform use; smooth transitions between features with minimal issues",
+                                "Expert platform mastery; seamless feature integration enhances learning experience"
+                            ],
+                            aiDetection: "Track screen changes, feature usage timing, error recovery speed, and disruption frequency"
+                        },
+                        {
+                            item: "Audio & Visual Quality Management",
+                            weight: 3,
+                            scale: [
+                                "Poor audio/video quality severely impairs comprehension; no attempt to improve",
+                                "Audio/video issues present; minimal effort to address quality problems",
+                                "Acceptable audio/video quality; addresses issues when they arise",
+                                "Good audio/video quality; proactively monitors and adjusts as needed",
+                                "Excellent audio/video quality; professional setup with optimal lighting and sound"
+                            ],
+                            aiDetection: "Measure audio clarity (dB levels, background noise), video resolution, lighting consistency, and frame stability"
+                        },
+                        {
+                            item: "Screen Sharing & Visual Aid Effectiveness",
+                            weight: 4,
+                            scale: [
+                                "Screen shares are unclear, poorly timed, or absent when needed",
+                                "Screen shares present but difficult to read or poorly organized",
+                                "Screen shares are clear and mostly well-timed with adequate content",
+                                "Screen shares are clear, well-timed, and enhance understanding",
+                                "Screen shares are professional, strategically timed, and significantly enhance learning"
+                            ],
+                            aiDetection: "Analyze screen share duration, text readability (font size), visual clarity, and timing relative to verbal explanations"
+                        },
+                        {
+                            item: "Chat & Poll Management",
+                            weight: 4,
+                            scale: [
+                                "Ignores chat and interactive features; no acknowledgment of participant input",
+                                "Rarely monitors chat; minimal use of interactive features",
+                                "Monitors chat periodically; uses some interactive features",
+                                "Actively monitors and responds to chat; regularly uses polls and interactive tools",
+                                "Seamlessly integrates chat responses and interactive features to drive engagement"
+                            ],
+                            aiDetection: "Track response time to chat messages, poll deployment frequency, and acknowledgment patterns"
+                        }
+                    ]
+                },
+                {
+                    name: "Content Delivery & Instructional Design",
+                    weight: 25,
+                    criteria: [
+                        {
+                            item: "Learning Objectives Clarity & Alignment",
+                            weight: 5,
+                            scale: [
+                                "No clear objectives stated; content lacks focus and direction",
+                                "Objectives mentioned but vague; limited alignment with content delivered",
+                                "Objectives stated clearly; content generally aligns with stated goals",
+                                "Objectives clearly communicated and reinforced; strong content alignment",
+                                "Objectives expertly framed and continuously reinforced; perfect alignment throughout"
+                            ],
+                            aiDetection: "Detect objective statements in opening, track keyword repetition, and analyze content-objective mapping"
+                        },
+                        {
+                            item: "Content Organization & Structure",
+                            weight: 5,
+                            scale: [
+                                "Content is disorganized and difficult to follow; no clear structure",
+                                "Some structure present but transitions are unclear; content feels scattered",
+                                "Content follows a logical structure; transitions are adequate",
+                                "Content is well-organized with clear transitions and logical flow",
+                                "Content is expertly structured with seamless transitions and perfect logical progression"
+                            ],
+                            aiDetection: "Analyze transition phrases, agenda adherence, topic segmentation, and recap patterns"
+                        },
+                        {
+                            item: "Complexity & Pacing Appropriateness",
+                            weight: 5,
+                            scale: [
+                                "Content too simple or too complex; pacing inappropriate for audience level",
+                                "Content somewhat mismatched to audience; pacing issues cause confusion or boredom",
+                                "Content generally appropriate; pacing mostly suitable with some adjustments needed",
+                                "Content well-matched to audience level; pacing appropriate with good adjustments",
+                                "Content perfectly calibrated to audience; dynamic pacing optimizes comprehension and engagement"
+                            ],
+                            aiDetection: "Measure speech rate (words per minute), pause frequency, complexity of vocabulary, and participant response patterns"
+                        },
+                        {
+                            item: "Examples, Stories & Real-World Application",
+                            weight: 5,
+                            scale: [
+                                "No examples or stories provided; purely theoretical with no practical connection",
+                                "Minimal examples; stories lack relevance or clarity",
+                                "Adequate examples and stories that support learning points",
+                                "Strong use of relevant examples and engaging stories that enhance understanding",
+                                "Compelling, diverse examples and stories that deeply connect content to real-world application"
+                            ],
+                            aiDetection: "Identify narrative structures, example phrases ('for instance', 'imagine'), and real-world context references"
+                        },
+                        {
+                            item: "Visual Aid & Multimedia Quality",
+                            weight: 5,
+                            scale: [
+                                "Visuals absent, illegible, or distracting; no multimedia support",
+                                "Visuals present but low quality, cluttered, or poorly integrated",
+                                "Visuals are clear and support content adequately",
+                                "High-quality visuals that enhance understanding; well-integrated multimedia",
+                                "Professional, engaging visuals and multimedia that significantly amplify learning impact"
+                            ],
+                            aiDetection: "Analyze slide design (text density, color contrast), image quality, animation usage, and visual-verbal synchronization"
+                        }
+                    ]
+                },
+                {
+                    name: "Facilitation & Engagement Skills",
+                    weight: 30,
+                    criteria: [
+                        {
+                            item: "Participant Engagement & Interaction",
+                            weight: 8,
+                            scale: [
+                                "No interaction with participants; purely lecture-based with no engagement attempts",
+                                "Minimal interaction; occasional questions but little participant involvement",
+                                "Regular interaction attempts; participants moderately engaged",
+                                "Strong interaction; participants actively engaged through varied techniques",
+                                "Exceptional interaction; participants highly engaged through dynamic, inclusive techniques"
+                            ],
+                            aiDetection: "Count questions asked, wait time for responses, participant turn-taking, and interaction frequency per segment"
+                        },
+                        {
+                            item: "Questioning Techniques & Think Time",
+                            weight: 6,
+                            scale: [
+                                "No questions asked or only yes/no questions; no wait time for thinking",
+                                "Basic questions with limited variety; insufficient wait time",
+                                "Mix of question types with adequate wait time for responses",
+                                "Effective use of varied question types (open, probing, reflective) with appropriate wait time",
+                                "Masterful questioning that stimulates critical thinking; strategic use of wait time maximizes depth"
+                            ],
+                            aiDetection: "Classify question types, measure pause duration after questions, and analyze question complexity"
+                        },
+                        {
+                            item: "Active Listening & Response Quality",
+                            weight: 6,
+                            scale: [
+                                "Does not acknowledge participant contributions; dismissive or no responses",
+                                "Minimal acknowledgment; responses lack depth or relevance",
+                                "Acknowledges contributions; responses are adequate and respectful",
+                                "Actively listens and builds on participant input; responses are thoughtful and validating",
+                                "Exceptional listening; synthesizes participant input to deepen learning for entire group"
+                            ],
+                            aiDetection: "Detect acknowledgment phrases, response elaboration patterns, and participant name usage"
+                        },
+                        {
+                            item: "Inclusivity & Psychological Safety",
+                            weight: 5,
+                            scale: [
+                                "Environment feels unwelcoming; certain participants ignored or dismissed",
+                                "Limited effort to include all participants; some feel excluded",
+                                "Generally inclusive; most participants feel comfortable contributing",
+                                "Deliberately inclusive; creates safe space where all feel valued",
+                                "Exceptionally inclusive; cultivates psychological safety where all participants thrive"
+                            ],
+                            aiDetection: "Track participant distribution of speaking opportunities, encouragement language, and response to errors/questions"
+                        },
+                        {
+                            item: "Energy, Enthusiasm & Presence",
+                            weight: 5,
+                            scale: [
+                                "Monotone, disengaged, or reading from slides; no energy or presence",
+                                "Low energy; minimal enthusiasm that doesn't inspire participation",
+                                "Moderate energy; demonstrates interest in topic and participants",
+                                "High energy and enthusiasm; maintains strong presence throughout",
+                                "Infectious energy and passion; magnetic presence that inspires and motivates learners"
+                            ],
+                            aiDetection: "Analyze vocal variety (pitch range, volume changes), speech rate variation, and facial expression changes"
+                        }
+                    ]
+                },
+                {
+                    name: "Communication & Presentation Skills",
+                    weight: 20,
+                    criteria: [
+                        {
+                            item: "Verbal Clarity & Articulation",
+                            weight: 5,
+                            scale: [
+                                "Unclear speech; frequent mumbling or mispronunciations impair understanding",
+                                "Speech sometimes unclear; articulation issues occasionally hinder comprehension",
+                                "Generally clear speech; articulation adequate for understanding",
+                                "Clear, well-articulated speech; easy to understand throughout",
+                                "Exceptional clarity and articulation; speech is crisp, professional, and effortless to follow"
+                            ],
+                            aiDetection: "Measure speech clarity score, pronunciation accuracy, and filler word frequency"
+                        },
+                        {
+                            item: "Voice Modulation & Vocal Variety",
+                            weight: 4,
+                            scale: [
+                                "Monotone delivery with no variation; difficult to maintain attention",
+                                "Limited vocal variety; tone rarely changes to emphasize points",
+                                "Some vocal variety; tone changes occasionally to maintain interest",
+                                "Good vocal variety; strategic use of tone, pitch, and volume for emphasis",
+                                "Masterful vocal variety; dynamic modulation enhances meaning and maintains engagement"
+                            ],
+                            aiDetection: "Analyze pitch variation, volume dynamics, and pace modulation patterns"
+                        },
+                        {
+                            item: "Body Language & Non-Verbal Communication",
+                            weight: 4,
+                            scale: [
+                                "Distracting or absent body language; no eye contact with camera",
+                                "Limited body language; minimal eye contact or facial expression",
+                                "Adequate body language; some eye contact and appropriate gestures",
+                                "Strong body language; consistent eye contact and purposeful gestures",
+                                "Exceptional non-verbal communication; expressive gestures and sustained camera presence enhance message"
+                            ],
+                            aiDetection: "Track eye gaze direction, gesture frequency, facial expression changes, and posture consistency"
+                        },
+                        {
+                            item: "Language Appropriateness & Accessibility",
+                            weight: 4,
+                            scale: [
+                                "Uses jargon without explanation; language inappropriate for audience level",
+                                "Excessive jargon or overly simplistic; limited accessibility considerations",
+                                "Generally appropriate language; explains most technical terms",
+                                "Language well-suited to audience; jargon explained; considers accessibility",
+                                "Language perfectly calibrated; exemplary accessibility practices; inclusive communication throughout"
+                            ],
+                            aiDetection: "Analyze vocabulary complexity, jargon usage with definitions, and accessibility language (captions referenced, described visuals)"
+                        },
+                        {
+                            item: "Filler Words & Professional Polish",
+                            weight: 3,
+                            scale: [
+                                "Excessive filler words ('um', 'uh', 'like') severely distract from content",
+                                "Frequent filler words impact professional impression and flow",
+                                "Moderate use of filler words; doesn't significantly detract from message",
+                                "Minimal filler words; polished and professional delivery",
+                                "Virtually no filler words; exceptionally polished and confident delivery"
+                            ],
+                            aiDetection: "Count filler words, measure speech fluency score, and calculate filler-to-content ratio"
+                        }
+                    ]
+                },
+                {
+                    name: "Time Management & Session Flow",
+                    weight: 10,
+                    criteria: [
+                        {
+                            item: "Adherence to Agenda & Time Allocation",
+                            weight: 5,
+                            scale: [
+                                "No agenda followed; significant time mismanagement with topics rushed or overextended",
+                                "Loose adherence to agenda; noticeable timing issues affect coverage",
+                                "Generally follows agenda; most time allocations appropriate",
+                                "Strong adherence to agenda; time well-managed with minor adjustments",
+                                "Exemplary time management; perfect pacing while remaining flexible to learning needs"
+                            ],
+                            aiDetection: "Compare actual vs. planned segment durations, measure transition efficiency, and track agenda coverage"
+                        },
+                        {
+                            item: "Break Management & Session Pacing",
+                            weight: 3,
+                            scale: [
+                                "No breaks provided or poorly timed; session pacing exhausting or inefficient",
+                                "Breaks provided but timing suboptimal; pacing uneven",
+                                "Appropriate breaks; generally good pacing throughout session",
+                                "Well-timed breaks; excellent pacing maintains energy and focus",
+                                "Strategic break timing and pacing optimize cognitive load and sustained engagement"
+                            ],
+                            aiDetection: "Track break intervals, duration, and participant re-engagement patterns post-break"
+                        },
+                        {
+                            item: "Opening & Closing Effectiveness",
+                            weight: 2,
+                            scale: [
+                                "Weak or absent opening/closing; no clear beginning or end to session",
+                                "Basic opening/closing present but lacks impact or clarity",
+                                "Adequate opening that sets stage and closing that reviews key points",
+                                "Strong opening that engages and closing that reinforces learning",
+                                "Compelling opening that hooks learners and powerful closing that drives action and retention"
+                            ],
+                            aiDetection: "Analyze opening hook elements, closing summary presence, and call-to-action statements"
+                        }
+                    ]
+                }
+            ]
+        };
+
+        let ratings = {};
+        let notes = {};
+        let showAI = false;
+
+        function renderCategories() {
+            const container = document.getElementById('categoriesContainer');
+            container.innerHTML = '';
+
+            rubricData.categories.forEach((category, catIndex) => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'bg-white rounded-lg shadow-lg p-6 mb-6';
+
+                const categoryScore = calculateCategoryScore(catIndex);
+
+                let categoryHTML = `
+                    <div class="border-b-2 border-gray-200 pb-3 mb-4">
+                        <div class="flex justify-between items-center">
+                            <h2 class="text-2xl font-bold text-gray-800">${category.name}</h2>
+                            <div class="text-right">
+                                <div class="text-sm text-gray-600">Category Score</div>
+                                <div class="text-2xl font-bold text-blue-600">
+                                    <span id="cat-${catIndex}-score">${categoryScore}</span><span class="text-lg text-gray-500">/${category.weight}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                category.criteria.forEach((criterion, critIndex) => {
+                    const currentRating = ratings[`${catIndex}-${critIndex}`];
+                    
+                    categoryHTML += `
+                        <div class="mb-6 border-b border-gray-200 pb-6">
+                            <div class="flex justify-between items-start mb-3">
+                                <h3 class="text-lg font-semibold text-gray-700 flex-1">${criterion.item}</h3>
+                                <span class="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded ml-4">Weight: ${criterion.weight}</span>
+                            </div>
+                            <div class="mb-4">
+                                <div class="flex gap-2 mb-2">
+                    `;
+
+                    for (let score = 1; score <= 5; score++) {
+                        const colors = {
+                            1: 'bg-red-600',
+                            2: 'bg-orange-500',
+                            3: 'bg-yellow-500',
+                            4: 'bg-blue-600',
+                            5: 'bg-green-600'
+                        };
+                        const isSelected = currentRating === score;
+                        categoryHTML += `
+                            <button onclick="selectScore(${catIndex}, ${critIndex}, ${score})" 
+                                class="score-btn flex-1 py-3 px-4 rounded-lg font-bold text-lg ${isSelected ? colors[score] + ' text-white selected' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">
+                                ${score}
+                            </button>
+                        `;
+                    }
+
+                    categoryHTML += `
+                                </div>
+                                <div class="text-xs text-gray-600 text-center">Click a number to assign score</div>
+                            </div>
+                    `;
+
+                    if (currentRating) {
+                        categoryHTML += `
+                            <div class="bg-blue-50 border border-blue-200 rounded p-3 mb-3">
+                                <p class="text-sm font-semibold text-blue-800 mb-1">Performance Descriptor:</p>
+                                <p class="text-sm text-gray-700">${criterion.scale[currentRating - 1]}</p>
+                            </div>
+                        `;
+                    }
+
+                    if (showAI) {
+                        categoryHTML += `
+                            <div class="bg-purple-50 border border-purple-200 rounded p-3 mb-3">
+                                <p class="text-sm font-semibold text-purple-800 mb-1">AI Detection Method:</p>
+                                <p class="text-sm text-gray-700">${criterion.aiDetection}</p>
+                            </div>
+                        `;
+                    }
+
+                    categoryHTML += `
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-1">Notes / Comments (Optional)</label>
+                                <textarea id="note-${catIndex}-${critIndex}" 
+                                    onchange="saveNote(${catIndex}, ${critIndex}, this.value)"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" 
+                                    rows="2" 
+                                    placeholder="Add specific observations or feedback...">${notes[`${catIndex}-${critIndex}`] || ''}</textarea>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                categoryDiv.innerHTML = categoryHTML;
+                container.appendChild(categoryDiv);
+            });
+        }
+
+        function selectScore(catIndex, critIndex, score) {
+            ratings[`${catIndex}-${critIndex}`] = score;
+            updateScores();
+            renderCategories();
+        }
+
+        function saveNote(catIndex, critIndex, note) {
+            notes[`${catIndex}-${critIndex}`] = note;
+        }
+
+        function calculateCategoryScore(catIndex) {
+            const category = rubricData.categories[catIndex];
+            let totalScore = 0;
+            let maxScore = 0;
+
+            category.criteria.forEach((criterion, critIndex) => {
+                const rating = ratings[`${catIndex}-${critIndex}`] || 0;
+                totalScore += rating * criterion.weight;
+                maxScore += 5 * criterion.weight;
+            });
+
+            return maxScore > 0 ? ((totalScore / maxScore) * category.weight).toFixed(1) : '0.0';
+        }
+
+        function calculateTotalScore() {
+            let totalScore = 0;
+            rubricData.categories.forEach((category, catIndex) => {
+                totalScore += parseFloat(calculateCategoryScore(catIndex));
+            });
+            return totalScore.toFixed(1);
+        }
+
+        function getScoreLevel(score) {
+            if (score >= 90) return { level: 'Exceptional', color: 'text-green-700 bg-green-100' };
+            if (score >= 80) return { level: 'Excellent', color: 'text-blue-700 bg-blue-100' };
+            if (score >= 70) return { level: 'Good', color: 'text-yellow-700 bg-yellow-100' };
+            if (score >= 60) return { level: 'Fair', color: 'text-orange-700 bg-orange-100' };
+            return { level: 'Needs Improvement', color: 'text-red-700 bg-red-100' };
+        }
+
+        function updateScores() {
+            const totalScore = parseFloat(calculateTotalScore());
+            const scoreLevel = getScoreLevel(totalScore);
+
+            document.getElementById('totalScore').textContent = totalScore.toFixed(1);
+            document.getElementById('totalScoreBottom').textContent = totalScore.toFixed(1);
+
+            const scoreLevelEl = document.getElementById('scoreLevel');
+            scoreLevelEl.textContent = scoreLevel.level;
+            scoreLevelEl.className = `inline-block px-4 py-2 rounded-lg font-semibold ${scoreLevel.color}`;
+
+            const scoreLevelBottomEl = document.getElementById('scoreLevelBottom');
+            scoreLevelBottomEl.textContent = scoreLevel.level;
+            scoreLevelBottomEl.className = `inline-block px-4 py-2 rounded-lg font-semibold ${scoreLevel.color}`;
+        }
+
+        function toggleAI() {
+            showAI = !showAI;
+            document.getElementById('aiToggleText').textContent = showAI ? 'Hide AI Detection Methods' : 'Show AI Detection Methods';
+            renderCategories();
+        }
+
+        function resetAll() {
+            if (confirm('Are you sure you want to reset all scores and notes?')) {
+                ratings = {};
+                notes = {};
+                document.getElementById('trainerName').value = '';
+                document.getElementById('sessionDate').value = '';
+                document.getElementById('evaluatorName').value = '';
+                updateScores();
+                renderCategories();
+            }
+        }
+
+        function exportToExcel() {
+            const trainerName = document.getElementById('trainerName').value || 'N/A';
+            const sessionDate = document.getElementById('sessionDate').value || 'N/A';
+            const evaluatorName = document.getElementById('evaluatorName').value || 'N/A';
+            const totalScore = calculateTotalScore();
+            const scoreLevel = getScoreLevel(parseFloat(totalScore));
+
+            let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<style>
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid black; padding: 8px; }
+th { background-color: #4472C4; color: white; font-weight: bold; }
+.category-header { background-color: #70AD47; color: white; font-weight: bold; }
+.score-col { background-color: #FFE699; font-weight: bold; text-align: center; }
+</style>
+</head>
+<body>
+<h1>Virtual Training Delivery Evaluation - Completed Scoresheet</h1>
+<table>
+<tr><td><strong>Trainer Name:</strong></td><td>${trainerName}</td></tr>
+<tr><td><strong>Session Date:</strong></td><td>${sessionDate}</td></tr>
+<tr><td><strong>Evaluator Name:</strong></td><td>${evaluatorName}</td></tr>
+<tr><td><strong>Total Score:</strong></td><td><strong>${totalScore}/100</strong></td></tr>
+<tr><td><strong>Performance Level:</strong></td><td><strong>${scoreLevel.level}</strong></td></tr>
+</table>
+<br>
+<table>
+<tr>
+<th>Category</th>
+<th>Criterion</th>
+<th>Score</th>
+<th>Notes</th>
+</tr>`;
+
+            rubricData.categories.forEach((category, catIndex) => {
+                category.criteria.forEach((criterion, critIndex) => {
+                    const rating = ratings[`${catIndex}-${critIndex}`] || 'Not Rated';
+                    const note = notes[`${catIndex}-${critIndex}`] || '';
+                    html += `<td>${criterion.item}</td>`;
+                    html += `<td class="score-col">${rating}</td>`;
+                    html += `<td>${note}</td>`;
+                    html += `</tr>`;
+                });
+            });
+
+            html += `</table></body></html>`;
+
+            const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Training_Evaluation_${trainerName.replace(/\s/g, '_')}_${sessionDate}.xls`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Initialize
+        renderCategories();
+        updateScores();
+    </script>
+</body>
+</html>r>`;
+                    if (critIndex === 0) {
+                        html += `<td class="category-header" rowspan="${category.criteria.length}">${category.name}<br>(${calculateCategoryScore(catIndex)}/${category.weight})</td>`;
+                    }
+                    html += `<t
